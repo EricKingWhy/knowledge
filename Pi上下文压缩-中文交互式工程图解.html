@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c111a">
+<meta name="description" content="《How Compaction Works in Pi》中文交互式工程解读：会话增长、保留近期 Token、独立压缩请求、缓存失效，以及如何在多 Agent 中落地。">
+<title>Pi 上下文压缩 · 中文交互式工程图解</title>
+<style>
+:root{--bg:#0c111a;--pane:#121a27;--pane2:#16202f;--pane3:#1d2938;--text:#edf3f4;--soft:#b5c4c9;--mute:#83949e;--stroke:#2a3b49;--accent:#a8e8d2;--cyan:#76bfdb;--gold:#ffc785;--rose:#ef909c;--purple:#b0a8f3;--shadow:0 24px 75px #0006;--rail:246px}
+:root.light{--bg:#f4f7f6;--pane:#ffffff;--pane2:#eef3f3;--pane3:#e6eeee;--text:#14272a;--soft:#475d66;--mute:#617981;--stroke:#cbd9da;--accent:#087b64;--cyan:#137b9a;--gold:#9d5a11;--rose:#b34057;--purple:#6450aa;--shadow:0 18px 50px #2e52501b}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:25px}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft Yahei",sans-serif;font-size:15px;line-height:1.78;overflow-x:hidden}button,select,input{font:inherit}button{cursor:pointer}a{color:var(--accent);text-underline-offset:4px}a:hover{opacity:.88}::selection{background:var(--accent);color:var(--bg)}body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 75% -15%,#52dec010,transparent 40%),linear-gradient(#8398a20b 1px,transparent 1px),linear-gradient(90deg,#8398a20b 1px,transparent 1px);background-size:auto,40px 40px,40px 40px;z-index:-1}.mono,code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}code{color:var(--accent);background:var(--pane2);padding:2px 5px;border-radius:4px;font-size:.92em}pre{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75;background:#090f17;border:1px solid #2a3b49;color:#d4e4e5;border-radius:12px;padding:18px;font-size:12px;margin:14px 0}.light pre{background:#ebf1f1;color:#203a3e;border-color:#cedddd}.muted{color:var(--mute)}.soft{color:var(--soft)}.fine{font-size:12px}.tag{display:inline-flex;gap:6px;align-items:center;white-space:nowrap;font-size:11px;font-weight:750;letter-spacing:.035em;padding:4px 9px;border-radius:100px;background:var(--pane3);color:var(--soft);border:1px solid var(--stroke)}.tag.source{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 32%,var(--stroke))}.tag.derive{color:var(--gold);border-color:color-mix(in srgb,var(--gold) 33%,var(--stroke))}
+.app{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100vh}.rail{height:100vh;position:sticky;top:0;border-right:1px solid var(--stroke);padding:30px 16px;background:var(--bg);overflow:auto;z-index:20}.brand{display:flex;gap:12px;align-items:center;margin:1px 8px 32px}.symbol{width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--accent);border-radius:12px;color:var(--accent);font-size:23px;font-weight:850}.brand strong{font-size:12px;letter-spacing:.15em}.brand small{color:var(--mute);font-size:10px;letter-spacing:.08em;display:block}.rail-label{font-size:10px;color:var(--mute);letter-spacing:.22em;padding:0 13px 10px}.nav{display:grid;gap:5px}.nav a{color:var(--soft);font-size:13px;text-decoration:none;display:flex;gap:11px;align-items:center;padding:10px 12px;border:1px solid transparent;border-radius:9px}.nav a span{color:var(--mute);font-size:11px}.nav a.active,.nav a:hover{background:var(--pane2);color:var(--text);border-color:var(--stroke)}.nav a.active span{color:var(--accent)}.rail-footer{margin-top:32px;padding:15px 12px;border-top:1px solid var(--stroke);font-size:11px;color:var(--mute);line-height:1.7}.rail-footer a{color:var(--soft)}.main{min-width:0}.mobile-bar{display:none}.content{max-width:1050px;margin:auto;padding:38px 54px 85px}.topline{display:flex;align-items:center;justify-content:space-between;gap:12px}.eyebrow{color:var(--accent);font-size:11px;letter-spacing:.2em;font-weight:800}.toolrow{display:flex;gap:8px}.smallbutton,.action,.segment button,.stepbtn,.option,.toolbutton{border:1px solid var(--stroke);background:var(--pane2);color:var(--soft);border-radius:9px;padding:8px 12px;transition:.18s}.smallbutton:hover,.action:hover,.segment button:hover,.stepbtn:hover,.option:hover,.toolbutton:hover{border-color:var(--accent);color:var(--text)}.smallbutton{font-size:12px}.hero{padding:70px 0 56px;position:relative}.hero h1{font-size:clamp(38px,5.8vw,74px);line-height:1.14;letter-spacing:-.065em;font-weight:850;margin:18px 0 21px}.hero h1 em{font-style:normal;color:var(--accent)}.hero .lead{font-size:17px;max-width:700px;color:var(--soft);line-height:1.85;margin:0 0 25px}.meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:34px}.thesis{border-left:3px solid var(--accent);background:var(--pane);padding:19px 23px;border-radius:0 13px 13px 0;max-width:810px;font-size:18px;line-height:1.85}.thesis b{color:var(--accent)}.chapter{padding:54px 0 14px;border-top:1px solid var(--stroke)}.chapter-head{display:flex;gap:15px;align-items:start;margin:0 0 16px}.num{font:700 13px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--accent);margin-top:10px}.chapter h2{font-size:clamp(25px,3.4vw,35px);margin:0;line-height:1.32;letter-spacing:-.04em}.chapter .intro{color:var(--soft);font-size:15px;margin:8px 0 20px;max-width:810px}.chapter h3{font-size:18px;margin:27px 0 12px;letter-spacing:-.018em}.chapter p{margin:11px 0}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.card{background:var(--pane);border:1px solid var(--stroke);border-radius:16px;padding:21px;min-width:0}.card h3{margin:0 0 7px;font-size:17px}.card p{margin:5px 0}.card > small{display:block;color:var(--mute)}.insight{margin:19px 0;padding:16px 20px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--stroke));background:color-mix(in srgb,var(--accent) 5%,var(--pane));border-radius:11px;line-height:1.85}.insight.warn{border-color:color-mix(in srgb,var(--gold) 40%,var(--stroke));background:color-mix(in srgb,var(--gold) 4%,var(--pane))}.insight strong{color:var(--accent)}.insight.warn strong{color:var(--gold)}.splitlabel{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.control{margin:16px 0}.control label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px;font-size:13px;font-weight:700}.control output{color:var(--accent);font-family:ui-monospace,monospace;font-weight:800}.range{width:100%;accent-color:var(--accent);cursor:pointer}.barbox{border:1px solid var(--stroke);background:var(--pane2);border-radius:12px;padding:13px 15px;margin:13px 0}.barlabel{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin-bottom:8px;color:var(--soft)}.bar{height:27px;background:var(--bg);border-radius:7px;display:flex;overflow:hidden;position:relative;border:1px solid var(--stroke)}.bar span{height:100%;min-width:0;transition:width .3s ease,opacity .2s}.bar span.fixed{background:#5b8090}.bar span.old{background:#d6a16d}.bar span.recent{background:#72c4ad}.bar span.summary{background:#afa6e9}.bar span.extra{background:#ef8386}.legend{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0 0;font-size:11px;color:var(--soft)}.dot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle}.stat{background:var(--pane2);border:1px solid var(--stroke);border-radius:11px;padding:12px 14px}.stat small{display:block;color:var(--mute);font-size:11px}.stat strong{font-size:22px;font-family:ui-monospace,monospace;color:var(--text)}.stat strong.good{color:var(--accent)}.stat strong.warning{color:var(--gold)}.stat strong.bad{color:var(--rose)}.diagram{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:16px 0}.node{flex:1 1 130px;text-align:center;border:1px solid var(--stroke);border-radius:11px;background:var(--pane2);padding:14px 12px}.node b{display:block;font-size:13px}.node small{color:var(--mute);font-size:11px}.arrow{display:grid;place-items:center;color:var(--accent);font-size:22px}.segment{display:flex;flex-wrap:wrap;gap:7px}.segment button{padding:8px 13px;font-size:12px;font-weight:750}.segment button.active,.stepbtn.active,.option.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}.timeline{display:grid;gap:12px;margin:18px 0}.time-row{display:grid;grid-template-columns:28px 1fr;gap:14px;align-items:start}.time-count{height:28px;width:28px;display:grid;place-items:center;border-radius:100%;border:1px solid var(--stroke);color:var(--accent);font:700 12px ui-monospace,monospace}.time-card{border-left:2px solid var(--stroke);padding:0 0 16px 18px;margin-left:-28px;padding-left:43px}.time-row:last-child .time-card{border:0}.time-card b{display:block}.time-card div{color:var(--soft);font-size:13px}.stepbar{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px}.stepbtn{font-size:12px;font-weight:700}.term{background:#070d14;border:1px solid #2b4150;border-radius:14px;overflow:hidden}.term-head{padding:12px 16px;background:#121d28;border-bottom:1px solid #243745;color:#97acb4;font:12px ui-monospace,monospace;display:flex;justify-content:space-between}.term pre{margin:0;border:0;background:transparent;color:#d4e4e5;padding:17px;min-height:162px}.badge-line{font-size:13px;color:var(--soft);padding:10px 13px;border:1px solid var(--stroke);background:var(--pane2);border-radius:9px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:13px}.compare h4{margin:0 0 8px;font-size:13px;color:var(--mute)}.code-block{background:var(--pane2);border:1px solid var(--stroke);border-radius:11px;padding:16px;min-width:0}.tokenrow{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}.tokenchip{font-size:11px;border-radius:6px;padding:5px 7px;font-family:ui-monospace,monospace;background:#557583;color:#fff}.tokenchip.old{background:#966e48}.tokenchip.new{background:#615f9f}.tokenchip.preserved{background:#378778}.tokenchip.uncached{background:#b06365}.tokenchip.outline{background:transparent;border:1px dashed var(--accent);color:var(--accent)}.cache-note{font-size:13px;min-height:45px;color:var(--soft)}.accordion{border:1px solid var(--stroke);border-radius:12px;background:var(--pane);margin:9px 0;overflow:hidden}.accordion summary{cursor:pointer;padding:14px 17px;font-weight:750;display:flex;justify-content:space-between;gap:10px;list-style:none}.accordion summary::-webkit-details-marker{display:none}.accordion summary:after{content:'+';color:var(--accent);font-size:19px}.accordion[open] summary:after{content:'−'}.accordion .details{padding:0 17px 16px;color:var(--soft);font-size:13px}.mark{color:var(--accent);font-weight:700}.warntext{color:var(--gold)}.risktext{color:var(--rose)}.audit{display:grid;gap:9px}.audit .rowitem{background:var(--pane2);border:1px solid var(--stroke);border-radius:10px;padding:13px 15px;display:flex;gap:13px;align-items:start}.audit .rowitem b{min-width:93px;font-size:13px}.audit .rowitem span{color:var(--soft);font-size:13px}.copybutton{background:var(--accent);color:var(--bg);border:0;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:800}.copybutton:hover{filter:brightness(1.12)}.question{border:1px solid var(--stroke);border-radius:13px;padding:20px;background:var(--pane);margin:16px 0}.question .prompt{font-weight:780;margin-bottom:11px}.options{display:grid;gap:8px}.option{text-align:left;font-size:13px;line-height:1.6}.option.correct{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--pane));color:var(--text)}.option.wrong{border-color:var(--rose);background:color-mix(in srgb,var(--rose) 11%,var(--pane));color:var(--text)}.answer{font-size:13px;margin-top:11px;color:var(--soft);min-height:22px}.footer{border-top:1px solid var(--stroke);padding:35px 0;margin-top:30px;color:var(--soft);font-size:12px}.footer a{color:var(--accent)}.progress{position:fixed;left:var(--rail);top:0;height:3px;background:var(--accent);z-index:100;width:0;transition:width .1s}.mobile-progress{display:none}.source-links{display:grid;gap:8px;margin:17px 0}.source-links a{display:block;text-decoration:none;padding:12px 16px;border:1px solid var(--stroke);border-radius:10px;background:var(--pane);font-size:13px}.source-links a small{float:right;color:var(--mute)}
+@media(max-width:1020px){.content{padding:30px 32px 65px}.hero{padding-top:51px}}
+@media(max-width:780px){:root{--rail:0px}.app{display:block}.rail{display:none}.mobile-bar{position:sticky;top:0;z-index:30;display:flex;justify-content:space-between;align-items:center;gap:10px;background:color-mix(in srgb,var(--bg) 95%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--stroke);padding:10px 17px}.mobile-bar strong{font-size:13px}.mobile-bar .smallbutton{padding:6px 10px}.mobile-drawer{display:none;position:fixed;z-index:31;top:55px;left:0;right:0;max-height:70vh;overflow:auto;padding:16px;background:var(--bg);border-bottom:1px solid var(--stroke);box-shadow:var(--shadow)}.mobile-drawer.open{display:block}.mobile-drawer .nav{grid-template-columns:1fr 1fr}.content{padding:23px 20px 70px}.progress{left:0}.hero{padding:42px 0 45px}.hero h1{letter-spacing:-.055em}.grid3{grid-template-columns:1fr}.meta{margin-bottom:27px}}
+@media(max-width:600px){body{font-size:14px}.grid2,.compare{grid-template-columns:1fr}.hero .lead{font-size:15px}.hero h1{font-size:40px}.thesis{font-size:15px}.chapter{padding-top:42px}.chapter h2{font-size:26px}.card{padding:16px}.grid3{gap:9px}.stat strong{font-size:19px}.stat{padding:10px}.grid2.stat-grid{grid-template-columns:1fr 1fr}.node{flex:1 1 100%;}.arrow{transform:rotate(90deg);height:13px}.tokenchip{font-size:10px;padding:4px 6px}.source-links a small{float:none;display:block}.toolrow .smallbutton{font-size:11px}.chapter-head{gap:10px}.content{padding-left:18px;padding-right:18px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="app">
+<aside class="rail">
+ <div class="brand"><div class="symbol">π</div><div><strong>AGENT SYSTEMS</strong><small>INTERACTIVE READING / 01</small></div></div>
+ <div class="rail-label">阅读路径 · CONTENTS</div>
+ <nav class="nav" id="desktopNav">
+  <a href="#overview" class="active"><span>00</span> 核心结论</a>
+  <a href="#growth"><span>01</span> Context 为什么增长</a>
+  <a href="#trigger"><span>02</span> Pi 如何触发压缩</a>
+  <a href="#budget"><span>03</span> Token 预算模拟器</a>
+  <a href="#request"><span>04</span> 独立压缩请求</a>
+  <a href="#cache"><span>05</span> 缓存为什么失效</a>
+  <a href="#memory"><span>06</span> 压缩 ≠ 持久化状态</a>
+  <a href="#practice"><span>07</span> 多 Agent 工程落地</a>
+  <a href="#quiz"><span>08</span> 认知校验</a>
+  <a href="#sources"><span>09</span> 来源和边界</a>
+ </nav>
+ <div class="rail-footer">基于 Earendil 原文与小墨同学授权中文译文的独立技术解读。<br>展示数字中，注明“示例”的均非 Pi 官方实测。</div>
+</aside>
+<div class="main">
+<header class="mobile-bar"><strong>π / 上下文压缩</strong><div class="toolrow"><button class="smallbutton" id="mobileTheme" aria-label="切换主题">◐</button><button class="smallbutton" id="mobileMenu" aria-expanded="false">目录 ☰</button></div></header>
+<nav class="mobile-drawer" id="mobileDrawer"><div class="nav" id="mobileNav">
+<a href="#overview"><span>00</span> 核心结论</a><a href="#growth"><span>01</span> 会话增长</a><a href="#trigger"><span>02</span> 触发逻辑</a><a href="#budget"><span>03</span> 预算模拟</a><a href="#request"><span>04</span> 压缩请求</a><a href="#cache"><span>05</span> 提示缓存</a><a href="#memory"><span>06</span> 状态边界</a><a href="#practice"><span>07</span> 工程落地</a><a href="#quiz"><span>08</span> 测验</a><a href="#sources"><span>09</span> 来源</a></div></nav>
+<main class="content">
+<section class="hero" id="overview">
+ <div class="topline"><div class="eyebrow">ENGINEERING EXPLAINER / 2026</div><div class="toolrow"><button class="smallbutton" id="themeBtn">◐ 主题</button><button class="smallbutton" id="topShare">↗ 原推文</button></div></div>
+ <h1>上下文压缩，<br><em>压掉的究竟是什么？</em></h1>
+ <p class="lead">从 Pi 的实现出发，拆开 Compaction（上下文压缩）的触发、摘要、近期保留与 Prompt Cache（提示缓存）机制，再把它接到真正的 Agent 长任务系统里。</p>
+ <div class="meta"><span class="tag source">● 原文机制已核对</span><span class="tag">10 个阅读节点</span><span class="tag">5 个交互实验</span><span class="tag">手机可用 · 离线运行</span></div>
+ <div class="thesis"><b>一句话：</b>Compaction 不等于删记录，也不等于保存状态。它是<span class="mark">把旧对话变成结构化摘要，原样保留近期上下文，再重新拼装下一次模型请求</span>。收益是上下文空间；代价是信息损失风险与缓存前缀失效。</div>
+ <div class="grid3" style="margin-top:20px">
+  <div class="card"><div class="tag source">事实 01</div><h3 style="margin-top:11px">旧内容被总结</h3><p class="soft fine">较早轮次进入摘要，而不是每条都原封不动送给模型。</p></div>
+  <div class="card"><div class="tag source">事实 02</div><h3 style="margin-top:11px">近期对话原样保留</h3><p class="soft fine">Pi 原文所述当时的默认预算是 20K Token，约 5–20 轮。</p></div>
+  <div class="card"><div class="tag source">事实 03</div><h3 style="margin-top:11px">Prompt Cache 会断</h3><p class="soft fine">旧摘要替换前缀，后方相同 Token 也无法沿用旧缓存。</p></div>
+ </div>
+</section>
+<section class="chapter" id="growth">
+ <div class="chapter-head"><span class="num">01 /</span><div><h2>一次 Tool Call，为什么会让上下文越来越胖</h2><p class="intro">模型看到的不是“上一次消息”，而是每次请求重新组装的一段上下文。工具结果、模型输出、用户消息会逐渐累积。</p></div></div>
+ <div class="splitlabel"><span class="tag source">来自原文 · 交互演示</span><span class="soft fine" id="turnDescription">第 1 步：用户发起任务</span></div>
+ <div class="card">
+  <div class="stepbar" id="conversationSteps"><button class="stepbtn active" data-step="0">① 用户输入</button><button class="stepbtn" data-step="1">② 调用工具</button><button class="stepbtn" data-step="2">③ 工具返回</button><button class="stepbtn" data-step="3">④ 下一轮</button></div>
+  <div id="turnTokens" class="tokenrow" aria-live="polite"></div>
+  <p class="fine soft" id="growthExplainer" style="margin-top:13px">固定前缀（系统提示、工具定义）+ 用户输入，组成初始请求。</p>
+ </div>
+ <div class="insight"><strong>关键区别：</strong>“一次用户轮次”不等于“一次模型请求”。同一轮内模型可以连续发起工具调用，多次携带完整已有上下文。工具返回的长日志特别容易撑大请求。</div>
+</section>
+<section class="chapter" id="trigger">
+ <div class="chapter-head"><span class="num">02 /</span><div><h2>什么时候压缩？Pi 不是每条消息压一次</h2><p class="intro">Pi 优先让正常轮次完整执行，减少频繁改写 Prompt 前缀；当快超限时再处理。</p></div></div>
+ <div class="segment" id="triggerModes"><button class="active" data-mode="end">正常自动触发</button><button data-mode="overflow">轮次中溢出</button><button data-mode="manual">手动 /compact</button></div>
+ <div class="card" style="margin-top:13px"><div class="diagram" id="triggerDiagram"></div><p class="fine soft" id="triggerText"></p></div>
+ <div class="grid2">
+  <div class="card"><span class="tag source">原文机制</span><h3>自动检查时机</h3><p class="soft fine">通常在一个 Turn（轮次）结束后检查；如果中途收到上下文溢出错误，可能在轮内压缩。</p></div>
+  <div class="card"><span class="tag derive">工程解释</span><h3>为何不每步压缩</h3><p class="soft fine">高频压缩既增加摘要请求，也频繁使 Prompt Cache 冷启动；还会累计摘要丢失与语义漂移风险。</p></div>
+ </div>
+</section>
+<section class="chapter" id="budget">
+ <div class="chapter-head"><span class="num">03 /</span><div><h2>动手调一次 Token 预算</h2><p class="intro">将早期历史压缩，保留最近工作。注意：Pi 的“近期保留 20K”是<span class="mark">保留区域的 Token 预算</span>，不是摘要一定有 20K，也不是总上下文上限。</p></div></div>
+ <div class="card">
+  <div class="splitlabel"><strong>Compaction 预算实验室</strong><span class="tag derive">参数与结果为示例</span></div>
+  <div class="grid2">
+   <div class="control"><label for="history">对话历史（含工具结果）<output id="historyOut">100,000</output></label><input class="range" id="history" type="range" min="10" max="145" step="5" value="100"></div>
+   <div class="control"><label for="retained">近期原样保留 Token <output id="retainedOut">20,000</output></label><input class="range" id="retained" type="range" min="5" max="40" step="5" value="20"></div>
+   <div class="control"><label for="summary">压缩摘要 Token（假设）<output id="summaryOut">3,000</output></label><input class="range" id="summary" type="range" min="1" max="10" step="1" value="3"></div>
+   <div class="control"><label for="windowSize">上下文窗口（演示值）<output id="windowOut">128,000</output></label><input class="range" id="windowSize" type="range" min="64" max="200" step="8" value="128"></div>
+  </div>
+  <div class="barbox"><div class="barlabel"><b>压缩前 · Input Context</b><span id="beforeTokens"></span></div><div class="bar" id="beforeBar" aria-label="压缩前占用"></div></div>
+  <div class="barbox"><div class="barlabel"><b>压缩后 · Reconstructed Context</b><span id="afterTokens"></span></div><div class="bar" id="afterBar" aria-label="压缩后占用"></div></div>
+  <div class="legend"><span><i class="dot" style="background:#5b8090"></i>系统 + 工具（假设 6K）</span><span><i class="dot" style="background:#d6a16d"></i>旧历史</span><span><i class="dot" style="background:#72c4ad"></i>近期原样保留</span><span><i class="dot" style="background:#afa6e9"></i>摘要</span></div>
+  <div class="grid3" style="margin-top:16px"><div class="stat"><small>原本输入 Token</small><strong id="beforeStat">106,000</strong></div><div class="stat"><small>压缩后输入 Token</small><strong id="afterStat" class="good">29,000</strong></div><div class="stat"><small>减少的输入量</small><strong id="savedStat">77,000</strong></div></div>
+  <p class="fine soft" id="budgetStatus" role="status"></p>
+ </div>
+ <div class="insight warn"><strong>别把演示当成本预测：</strong>这里没有计入输出预留、实际模型上下文、工具定义变化、摘要请求的额外开销、缓存单价以及 Pi 的具体截断规则。它只演示“旧历史 → 摘要 + 近期保留”的数量级关系。</div>
+</section>
+<section class="chapter" id="request">
+ <div class="chapter-head"><span class="num">04 /</span><div><h2>压缩本身，是一次独立的 LLM 请求</h2><p class="intro">重点不是“模型忽然想起要总结”，而是 Agent Harness（智能体运行框架）专门组织一次压缩任务，给摘要模型不同的角色和输入。</p></div></div>
+ <div class="stepbar" id="compressionSteps"><button class="stepbtn active" data-comp="0">1. 选取旧历史</button><button class="stepbtn" data-comp="1">2. 请求摘要模型</button><button class="stepbtn" data-comp="2">3. 写入压缩条目</button><button class="stepbtn" data-comp="3">4. 继续会话</button></div>
+ <div class="term"><div class="term-head"><span id="compTitle">INPUT · SELECT OLDER HISTORY</span><span>PI COMPACTION</span></div><pre id="compTerminal" aria-live="polite"></pre></div>
+ <div class="grid2" style="margin-top:15px"><div class="card"><span class="tag source">原文事实</span><h3>专用的 System Prompt</h3><p class="soft fine">普通请求的角色是“解决编程问题”，压缩请求的角色变为“整理可供后续接手的上下文”。摘要重点包括目标、进度、关键决策。</p></div><div class="card"><span class="tag source">原文事实</span><h3>可以独立选择模型</h3><p class="soft fine">压缩请求不是带着先前聊天消息继续对话，而是把要压缩的历史序列化为该请求的输入。因此摘要模型可以不同于执行模型。</p></div></div>
+ <div class="insight"><strong>易错点：</strong>“不使用现有对话历史作为聊天上下文”不代表“不给摘要模型旧内容”。恰恰相反，待压缩的旧历史必须作为这次独立请求的任务输入提供。</div>
+</section>
+<section class="chapter" id="cache">
+ <div class="chapter-head"><span class="num">05 /</span><div><h2>为什么留住近期消息，缓存依然失效？</h2><p class="intro">Prompt Cache 的核心约束是<span class="mark">前缀相同</span>。你改了前半段，即使后半段字符一样，它的 KV 缓存也不能直接接在原来的前缀后继续用。</p></div></div>
+ <div class="segment" id="cacheStages"><button class="active" data-cache="before">A · 压缩前</button><button data-cache="first">B · 压缩后首请求</button><button data-cache="later">C · 后续稳定请求</button></div>
+ <div class="card" style="margin-top:13px">
+  <div class="splitlabel"><strong id="cacheTitle">A. 原来的前缀仍可匹配</strong><span class="tag source">原文缓存机制</span></div>
+  <div class="tokenrow" id="cacheTokens"></div>
+  <div class="grid2 stat-grid" style="margin-top:15px"><div class="stat"><small>可沿用的缓存范围（示意）</small><strong id="cacheReuse">旧前缀</strong></div><div class="stat"><small>额外需要处理的内容</small><strong id="cacheRebuild">仅新增部分</strong></div></div>
+  <p class="cache-note" id="cacheDescription"></p>
+ </div>
+ <div class="compare" style="margin-top:15px">
+  <div class="code-block"><h4>压缩之前</h4><div class="tokenrow"><span class="tokenchip">system</span><span class="tokenchip">tools</span><span class="tokenchip old">old turns</span><span class="tokenchip preserved">recent turns</span></div><p class="fine soft">旧的连续 Token 序列，是已经建立缓存的前缀。</p></div>
+  <div class="code-block"><h4>压缩之后</h4><div class="tokenrow"><span class="tokenchip">system</span><span class="tokenchip">tools</span><span class="tokenchip new">summary</span><span class="tokenchip preserved">recent turns</span></div><p class="fine soft">第一个改变的 Token 发生在摘要替换处；后面的 recent turns 虽相同，前缀却不同。</p></div>
+ </div>
+ <div class="insight"><strong>精确结论：</strong>压缩会破坏<span class="mark">旧前缀</span>的缓存复用，不代表此后永远无法缓存。下一次请求建立新前缀后，后续追加式请求又可以继续受益。</div>
+</section>
+<section class="chapter" id="memory">
+ <div class="chapter-head"><span class="num">06 /</span><div><h2>四件事别混：压缩、长期记忆、Checkpoint、Event Log</h2><p class="intro">这是把文章迁移到生产 Agent 系统最关键的一步。它们的读写对象、恢复粒度、故障模型都不同。</p></div></div>
+ <div class="grid2">
+  <div class="card"><span class="tag source">① 原文讨论</span><h3>Compaction · 上下文压缩</h3><p class="soft fine"><b>对象：</b>下次模型请求里的消息上下文。<br><b>目的：</b>让模型还能继续看得下去。<br><b>盲区：</b>摘要有损；不是执行进度快照。</p></div>
+  <div class="card"><span class="tag derive">② 工程扩展</span><h3>Long-term Memory · 长期记忆</h3><p class="soft fine"><b>对象：</b>可跨会话检索的事实、偏好、经验。<br><b>目的：</b>按任务需要召回相关知识。<br><b>盲区：</b>无法天然恢复控制流。</p></div>
+  <div class="card"><span class="tag derive">③ 工程扩展</span><h3>Checkpoint · 状态快照</h3><p class="soft fine"><b>对象：</b>Graph State、待执行节点、运行状态。<br><b>目的：</b>在已记录的安全恢复点继续。<br><b>盲区：</b>外部操作是否成功需单独核验。</p></div>
+  <div class="card"><span class="tag derive">④ 工程扩展</span><h3>Event Log · 事件日志</h3><p class="soft fine"><b>对象：</b>按时间追加的输入、工具调用、结果、状态变更。<br><b>目的：</b>审计、重建、可验证的回放依据。<br><b>盲区：</b>记录事件 ≠ 副作用可以安全重演。</p></div>
+ </div>
+ <h3>工程事实：这几个需求分别找谁？</h3>
+ <details class="accordion"><summary>“模型聊天太久，快超过上下文窗口”</summary><div class="details">用 Compaction／裁剪工具结果／按需检索。缩短传给模型的上下文。<b>不要只靠无限扩上下文</b>。</div></details>
+ <details class="accordion"><summary>“服务重启后，任务要从上一个阶段接着做”</summary><div class="details">用 Checkpoint 存储状态与节点进度，再通过检查点恢复。摘要只能帮助模型理解之前做了什么，不能单独保证控制流续跑。</div></details>
+ <details class="accordion"><summary>“同一个工具调用恢复后绝不能重复扣款 / 发消息”</summary><div class="details">工具侧需要幂等键（Idempotency Key）、操作状态查询、执行账本和回放策略。Event Log 可提供证据，但不能替代外部系统幂等。</div></details>
+ <details class="accordion"><summary>“Agent 下周要记住用户稳定偏好”</summary><div class="details">用持久化记忆层（带 scope、版本、冲突处理、检索）。不要指望一份会话压缩摘要自动成为可信长期记忆。</div></details>
+</section>
+<section class="chapter" id="practice">
+ <div class="chapter-head"><span class="num">07 /</span><div><h2>落到多 Agent 系统：不是照抄 20K，而是分层控预算</h2><p class="intro">下面是<span class="mark">工程设计建议，不是 Pi 官方实现</span>。例如一个 6 Agent 调研工作流若整次模型调用预算只有 12K Token，就不可能把“Pi 保留 20K”原封不动搬过来。</p></div></div>
+ <div class="diagram"><div class="node"><b>Context Manager</b><small>每次请求组装、Token 预算</small></div><div class="arrow">→</div><div class="node"><b>Compactor</b><small>旧历史摘要、近期保留</small></div><div class="arrow">→</div><div class="node"><b>LLM Agent</b><small>执行下一步</small></div></div>
+ <div class="diagram"><div class="node"><b>Checkpoint Store</b><small>阶段状态 / JSONB</small></div><div class="arrow">↔</div><div class="node"><b>Evidence Store</b><small>证据 ID 与可追溯来源</small></div><div class="arrow">↔</div><div class="node"><b>Event & Trace</b><small>审计日志、工具回放依据</small></div></div>
+ <div class="insight warn"><strong>预算先算清：</strong>12K 总预算与 10K 触发阈值只能是你系统自己的设计参数；先给 System/Tools、输出预留、近期任务、摘要划分空间，再决定裁剪哪部分。不同 Agent 应按职责隔离压缩范围。</div>
+ <h3>压缩摘要必须保留什么？</h3>
+ <div class="audit">
+  <div class="rowitem"><b>Goal</b><span>用户最终目标、交付标准、当前子问题；避免摘要只记过程，不记要解决的问题</span></div>
+  <div class="rowitem"><b>Progress</b><span>已完成步骤、未完成步骤、当前阻塞、下一步动作；尽量结构化、可判定</span></div>
+  <div class="rowitem"><b>Decisions</b><span>已经拍板的技术选型、被否定的方案、不可违反的约束；防止恢复后推倒重来</span></div>
+  <div class="rowitem"><b>Evidence IDs</b><span>引用证据标识、数据版本、路径和原始出处；摘要不能篡改原始工具事实</span></div>
+  <div class="rowitem"><b>Side effects</b><span>哪些操作已执行、工具返回的 operation_id、重试风险；不凭摘要判断副作用成功</span></div>
+ </div>
+ <div class="splitlabel" style="margin-top:25px"><h3 style="margin:0">一份可改的 Compaction Prompt 骨架</h3><button class="copybutton" id="copyPrompt">复制提示词</button></div>
+ <pre id="promptBlock">你是 Agent 的上下文交接整理器，不是任务执行器。
+输入：需要压缩的旧会话与工具结果（已序列化）。
+目标：为下一阶段保留可恢复的语义上下文，而不是复述聊天记录。
+
+请按以下结构输出：
+1. GOAL：目标、验收标准、边界条件
+2. PROGRESS：已完成 / 未完成 / 当前阻塞
+3. DECISIONS：确定的方案、拒绝过的方案及理由
+4. EVIDENCE：证据 ID、来源、尚待验证的结论
+5. NEXT_ACTION：可执行的下一步，包含前置条件
+6. RISKS：无法确认、潜在副作用、权限与安全边界
+
+硬约束：
+- 不捏造未发生的工具结果，不把猜测写成已验证事实。
+- 不生成替代原始证据的虚构引用。
+- 对不确定信息显式标记 UNKNOWN。
+- 仅保留与当前目标持续相关的上下文。
+- 输出紧凑，优先保留决策、阻塞与证据定位符。</pre>
+ <div class="grid2">
+  <div class="card"><span class="tag derive">建议 · 质量门槛</span><h3>摘要完成后，做一次校验</h3><p class="soft fine">检查目标、当前阶段、待办、关键决策、证据 ID 是否被保留；抽查与原始事件记录有无矛盾。错误摘要会持续污染后续轮次。</p></div>
+  <div class="card"><span class="tag derive">建议 · 成本门槛</span><h3>不要只盯摘要 Token 数</h3><p class="soft fine">同时测压缩请求成本、首次缓存冷启动、后续稳定缓存命中，以及压缩后任务成功率。最短摘要不一定最优。</p></div>
+ </div>
+ <h3>失败模式 → 对应控制点</h3>
+ <div class="grid2"><div class="card"><h3>摘要遗漏重要约束</h3><p class="fine soft">将权限、核心决策放结构化状态；关键字段必填并校验，不全时拒绝替换。</p></div><div class="card"><h3>工具结果占满窗口</h3><p class="fine soft">从源头限制大结果；保留摘要与引用句柄，详细内容按需读取。</p></div><div class="card"><h3>压缩后 Agent 重复执行</h3><p class="fine soft">恢复运行依赖状态机 + 幂等键 + 外部执行结果核对，而不是摘要文字。</p></div><div class="card"><h3>频繁压缩使缓存抖动</h3><p class="fine soft">按轮次边界进行压缩，监测压缩间隔、首请求 miss 和单位成功任务成本。</p></div></div>
+</section>
+<section class="chapter" id="quiz">
+ <div class="chapter-head"><span class="num">08 /</span><div><h2>三道题，检验是否真的理解</h2><p class="intro">不是背概念，选工程上最准确的解释。点击选项立即看判定。</p></div></div>
+ <div class="question" data-question="0"><div class="prompt">Q1. Pi 保留“最近 20K Token”意味着什么？</div><div class="options"><button class="option" data-answer="0">压缩摘要总是固定 20K</button><button class="option" data-answer="1">较新对话原样保留的默认 Token 预算（原文当时值）</button><button class="option" data-answer="2">Pi 支持的上下文窗口只有 20K</button></div><div class="answer" aria-live="polite"></div></div>
+ <div class="question" data-question="1"><div class="prompt">Q2. 压缩后最近 20K 消息完全相同，为什么旧 Prompt Cache 仍可能失效？</div><div class="options"><button class="option" data-answer="0">因为压缩修改了它们之前的 Token 前缀</button><button class="option" data-answer="1">因为缓存只能识别对话轮次，不能识别工具结果</button><button class="option" data-answer="2">因为近期消息被强制随机重排</button></div><div class="answer" aria-live="polite"></div></div>
+ <div class="question" data-question="2"><div class="prompt">Q3. Agent 压缩并恢复后再次发送一笔付款，最缺少的保障是什么？</div><div class="options"><button class="option" data-answer="0">把摘要写得更长</button><button class="option" data-answer="1">把模型上下文调成 200K</button><button class="option" data-answer="2">操作幂等与执行记录核对</button></div><div class="answer" aria-live="polite"></div></div>
+ <div class="insight"><strong>面试式总结：</strong>Pi 的上下文压缩由 Harness 管理，轮次边界优先触发；它把旧历史交给独立摘要请求，保留一段近期原始消息，再拼装新上下文。代价是有损摘要和缓存前缀重建。生产长任务还需要独立的 Checkpoint、事件记录和副作用幂等。</div>
+</section>
+<section class="chapter" id="sources">
+ <div class="chapter-head"><span class="num">09 /</span><div><h2>来源、事实边界与许可</h2><p class="intro">本文是中文原创讲解与交互演示，不是原文逐段复制。Pi 的实现信息以作者 2026 年 8 月 13 日发表的文章为准；后续版本可能调整默认值。</p></div></div>
+ <div class="source-links"><a href="https://x.com/xiaomovps/status/2106561874645111284" target="_blank" rel="noopener noreferrer">原 X 长文 · 小墨同学《从零开始理解上下文压缩》 <small>xiaomovps ↗</small></a><a href="https://pi.xiaomovps.com/translations/compaction-in-pi" target="_blank" rel="noopener noreferrer">授权中文译文 · Pi 中的压缩机制 <small>CC BY 4.0 · xiaomovps.com ↗</small></a><a href="https://earendil.com/posts/compaction-in-pi/" target="_blank" rel="noopener noreferrer">Earendil Engineering · How Compaction Works in Pi <small>英文原文 · 2026-08-13 ↗</small></a></div>
+ <p class="fine soft">分层标记说明：<span class="tag source">原文事实</span> 是能在上述原文中查到的机制；<span class="tag derive">工程扩展</span> 是为理解及应用到 RAG / Agent 系统补充的设计建议。预算与缓存实验全部是<span class="warntext">说明性模拟</span>，不应作为任何特定模型或产品的官方运行数据。</p>
+ <div class="footer">独立技术解读 · 交互式 HTML · 本地离线可用（引用链接需要联网）。<br>推荐按 03 → 05 → 06 → 07 的顺序再读一遍，抓住“预算、缓存、恢复”的三个边界。</div>
+</section>
+</main>
+</div>
+</div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+const q=(s,root=document)=>Array.from(root.querySelectorAll(s));
+const basePrompt=`你是 Agent 的上下文交接整理器，不是任务执行器。
+输入：需要压缩的旧会话与工具结果（已序列化）。
+目标：为下一阶段保留可恢复的语义上下文，而不是复述聊天记录。
+
+请按以下结构输出：
+1. GOAL：目标、验收标准、边界条件
+2. PROGRESS：已完成 / 未完成 / 当前阻塞
+3. DECISIONS：确定的方案、拒绝过的方案及理由
+4. EVIDENCE：证据 ID、来源、尚待验证的结论
+5. NEXT_ACTION：可执行的下一步，包含前置条件
+6. RISKS：无法确认、潜在副作用、权限与安全边界
+
+硬约束：
+- 不捏造未发生的工具结果，不把猜测写成已验证事实。
+- 不生成替代原始证据的虚构引用。
+- 对不确定信息显式标记 UNKNOWN。
+- 仅保留与当前目标持续相关的上下文。
+- 输出紧凑，优先保留决策、阻塞与证据定位符。`;
+function selectButtons(selector,key,value){q(selector).forEach(b=>b.classList.toggle('active',b.dataset[key]===String(value)))}
+function createChip(text,cls){const el=document.createElement('span');el.className='tokenchip '+cls;el.textContent=text;return el;}
+const growth=[
+ {desc:'第 1 步：用户发起任务',pieces:[['System + AGENTS.md',''],['Tools schema',''],['User task','new']],explain:'起点包含固定指令、工具定义和用户问题。',},
+ {desc:'第 2 步：LLM 发起工具调用',pieces:[['System + AGENTS.md',''],['Tools schema',''],['User task','new'],['Assistant tool_call','old']],explain:'模型决定调用工具，Agent Harness 接管工具执行。',},
+ {desc:'第 3 步：工具结果回填',pieces:[['System + AGENTS.md',''],['Tools schema',''],['User task','new'],['Assistant tool_call','old'],['Tool result ①','preserved'],['Assistant response','new']],explain:'新的模型请求会把已有消息和工具结果带回模型。尤其是巨大工具结果，会快速消耗窗口。',},
+ {desc:'第 4 步：下一轮继续累积',pieces:[['System + AGENTS.md',''],['Tools schema',''],['User task ①','old'],['Tool call','old'],['Tool result ①','old'],['Assistant ①','old'],['User task ②','new'],['Tool result ②','preserved']],explain:'此前轮次叠加到下一轮请求中；如果不断追加而不裁剪，上下文迟早会触及限制。',}
+];
+function renderGrowth(n){const item=growth[n];$('turnDescription').textContent=item.desc;$('turnTokens').replaceChildren(...item.pieces.map(x=>createChip(x[0],x[1])));$('growthExplainer').textContent=item.explain;selectButtons('#conversationSteps button','step',n);}
+q('#conversationSteps button').forEach(b=>b.addEventListener('click',()=>renderGrowth(+b.dataset.step)));renderGrowth(0);
+const triggers={
+ end:{nodes:[['Turn 正常完成','Agent 输出本轮最终结果'],['检查 Token 预算','逼近阈值时触发'],['独立摘要请求','压缩旧轮次，保留近期'],['继续下一轮','新前缀开始形成']],desc:'Pi 在轮次结束后检查是否要自动压缩。优点是当前轮次内尽量维持前缀稳定，方便复用已有缓存。'},
+ overflow:{nodes:[['运行中的请求','仍处于同一轮'],['Context Overflow','提供商拒绝超限请求'],['轮中压缩','缩减历史并重试可行路径'],['任务继续','保留仍需解决的工作']],desc:'原文说明，Pi 若在轮次中遇到上下文溢出错误，也可能执行压缩；这不是每个工具调用都必然压缩。'},
+ manual:{nodes:[['用户输入','/compact'],['明确触发','不必等自动阈值'],['历史摘要','保留近期原样消息'],['继续工作','使用压缩后的上下文']],desc:'手动 /compact 是 Pi 文章明确提到的入口。什么时候主动压缩取决于你对信息保真、成本与当前任务的权衡。'}
+};
+function renderTrigger(k){const x=triggers[k];const root=$('triggerDiagram');root.replaceChildren();x.nodes.forEach((node,i)=>{if(i){const arrow=document.createElement('div');arrow.className='arrow';arrow.textContent='→';root.appendChild(arrow)}const n=document.createElement('div');n.className='node';const b=document.createElement('b');b.textContent=node[0];const sm=document.createElement('small');sm.textContent=node[1];n.append(b,sm);root.appendChild(n)});$('triggerText').textContent=x.desc;selectButtons('#triggerModes button','mode',k)}
+q('#triggerModes button').forEach(b=>b.addEventListener('click',()=>renderTrigger(b.dataset.mode)));renderTrigger('end');
+function barFill(root,pieces,totalMax){root.replaceChildren();pieces.filter(x=>x[1]>0).forEach(([cls,amt])=>{const seg=document.createElement('span');seg.className=cls;seg.style.width=(100*amt/Math.max(totalMax,1))+'%';seg.title=cls+': '+fmt(amt)+' tokens';root.appendChild(seg)})}
+function budget(){const hist=+$('history').value*1000,keep=+$('retained').value*1000,sum=+$('summary').value*1000,windowN=+$('windowSize').value*1000;const fixed=6000,ret=Math.min(hist,keep),older=hist-ret,actualSum=older?sum:0;const pre=fixed+hist,post=fixed+ret+actualSum,preOver=pre>windowN,postOver=post>windowN;
+ $('historyOut').textContent=fmt(hist);$('retainedOut').textContent=fmt(keep);$('summaryOut').textContent=fmt(sum);$('windowOut').textContent=fmt(windowN);$('beforeTokens').textContent=fmt(pre)+' / '+fmt(windowN);$('afterTokens').textContent=fmt(post)+' / '+fmt(windowN);$('beforeStat').textContent=fmt(pre);$('afterStat').textContent=fmt(post);$('savedStat').textContent=fmt(pre-post);$('beforeStat').className=preOver?'bad':'';$('afterStat').className=postOver?'bad':'good';$('savedStat').className=pre>=post?'good':'bad';
+ const scale=Math.max(windowN,pre,post);
+ barFill($('beforeBar'),[['fixed',fixed],['old',older],['recent',ret]],scale);
+ barFill($('afterBar'),[['fixed',fixed],['summary',actualSum],['recent',ret]],scale);
+ const text=postOver?'压缩后仍超出示例窗口：需要进一步缩短摘要/近期预算，或重构请求。':older===0?'历史未超过近期保留预算，本次没有旧历史可摘要。':preOver?'原上下文已超过演示窗口，压缩后重新获得空间。':'原上下文暂未超限，但压缩可以释放额外空间。';$('budgetStatus').textContent=text+'（不含输出 Token 预留）';}
+q('#budget input').forEach(x=>x.addEventListener('input',budget));budget();
+const compStages=[
+ {name:'INPUT · SELECT OLDER HISTORY',body:'上下文分界点：\n[system + tools] [older turns] [recent retained turns]\n                  └── 选中待压缩部分 ──┘\n\n近期保留区域：原样留下，不进入这次摘要。'},
+ {name:'REQUEST · INDEPENDENT LLM CALL',body:'system: 你是上下文摘要助手。\nuser: 请将以下【被选中的旧历史】整理成结构化交接。\n\n输入材料：序列化的旧消息与工具调用/结果\n目标字段：Goal / Progress / Key Decisions / Remaining Work\n\n注意：这是独立的压缩请求；不是把旧会话当作此前的\n多条 chat message 原样继续接上。'},
+ {name:'SESSION · APPEND COMPACTION ENTRY',body:'session append:\n{\n  kind: "compaction",\n  summary: "目标、进度、关键决策……"\n}\n\n这是教学示意结构，并非 Pi 的真实存储 Schema。'},
+ {name:'CONTEXT · RECONSTRUCT NEXT REQUEST',body:'[system] [tools] [summary] [recent retained turns] [new user]\n                  ↑                 ↑\n             替代旧历史       最近消息原样保留\n\n下一次模型请求已缩短。原始会话与本次模型输入\n不是同一个概念。'}
+];
+function renderComp(i){$('compTitle').textContent=compStages[i].name;$('compTerminal').textContent=compStages[i].body;selectButtons('#compressionSteps button','comp',i)}
+q('#compressionSteps button').forEach(b=>b.addEventListener('click',()=>renderComp(+b.dataset.comp)));renderComp(0);
+const caches={
+ before:{title:'A. 压缩前：长历史的缓存前缀',tokens:[['system',''],['tools',''],['old history','old'],['recent turns','preserved'],['new message','outline']],reuse:'已有完整前缀',rebuild:'本次增量',desc:'同一段会话持续在尾部追加新内容，旧的相同前缀可以被缓存机制复用（具体取决于供应商和缓存条件）。'},
+ first:{title:'B. 压缩后首请求：在摘要处第一次出现差异',tokens:[['system',''],['tools',''],['NEW summary','new'],['recent turns','uncached'],['new message','uncached']],reuse:'变化前的前缀',rebuild:'摘要及其后所有',desc:'摘要替代旧历史后，第一个改变的 Token 之后都无法直接命中原来那条前缀缓存。recent turns 文本虽未改变，位置之前的前缀已变。'},
+ later:{title:'C. 之后的请求：新前缀再次稳定',tokens:[['system',''],['tools',''],['summary','new'],['recent turns','preserved'],['newer additions','outline']],reuse:'重新形成的前缀',rebuild:'后续新增部分',desc:'新序列在后续请求里保持稳定，就可以再次累积可复用缓存。不能把“压缩破坏旧缓存”误读成“以后永远不缓存”。'}
+};
+function renderCache(key){const x=caches[key];$('cacheTitle').textContent=x.title;$('cacheTokens').replaceChildren(...x.tokens.map(t=>createChip(t[0],t[1])));$('cacheReuse').textContent=x.reuse;$('cacheRebuild').textContent=x.rebuild;$('cacheDescription').textContent=x.desc;selectButtons('#cacheStages button','cache',key)}
+q('#cacheStages button').forEach(b=>b.addEventListener('click',()=>renderCache(b.dataset.cache)));renderCache('before');
+const solutions=[{correct:1,explanation:'对。原文是近期消息保留预算，默认约 20K，不是摘要长度或模型窗口。'},{correct:0,explanation:'对。缓存需要相同的 Token 前缀；压缩修改了 recent turns 之前的历史。'},{correct:2,explanation:'对。必须靠外部系统幂等键、执行账本和状态核对防重复副作用。'}];
+q('.question').forEach((node,index)=>{q('button.option',node).forEach(btn=>btn.addEventListener('click',()=>{const answer=+btn.dataset.answer;const right=solutions[index].correct;q('button.option',node).forEach(x=>{x.classList.remove('correct','wrong');x.disabled=false});btn.classList.add(answer===right?'correct':'wrong');if(answer!==right)q('button.option',node)[right].classList.add('correct');q('.answer',node)[0].textContent=(answer===right?'✓ 正确。':'✕ 不准确。')+solutions[index].explanation;}))});
+function setTheme(light){document.documentElement.classList.toggle('light',light);try{localStorage.setItem('pi_compaction_theme',light?'light':'dark')}catch{}}
+try{if(localStorage.getItem('pi_compaction_theme')==='light')setTheme(true)}catch{}
+$('themeBtn').addEventListener('click',()=>setTheme(!document.documentElement.classList.contains('light')));$('mobileTheme').addEventListener('click',()=>setTheme(!document.documentElement.classList.contains('light')));
+$('topShare').addEventListener('click',()=>window.open('https://x.com/xiaomovps/status/2106561874645111284','_blank','noopener,noreferrer'));
+$('mobileMenu').addEventListener('click',()=>{const open=$('mobileDrawer').classList.toggle('open');$('mobileMenu').setAttribute('aria-expanded',String(open));});q('#mobileNav a').forEach(a=>a.addEventListener('click',()=>{$('mobileDrawer').classList.remove('open');$('mobileMenu').setAttribute('aria-expanded','false')}));
+$('copyPrompt').addEventListener('click',async()=>{try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(basePrompt)}else{const el=document.createElement('textarea');el.value=basePrompt;el.style.position='fixed';el.style.opacity='0';document.body.append(el);el.select();const copied=document.execCommand('copy');el.remove();if(!copied)throw Error('copy unavailable')} $('copyPrompt').textContent='✓ 已复制';setTimeout(()=>$('copyPrompt').textContent='复制提示词',2000)}catch{ $('copyPrompt').textContent='复制受限 · 请手动选中';setTimeout(()=>$('copyPrompt').textContent='复制提示词',3000)}});
+let ticking=false;function updateScroll(){const scroll=document.documentElement.scrollTop||document.body.scrollTop;const max=Math.max(1,document.documentElement.scrollHeight-window.innerHeight);$('progress').style.width=Math.min(100,scroll/max*100)+'%';let chosen='overview';q('main section[id]').forEach(s=>{if(s.getBoundingClientRect().top<=160)chosen=s.id});q('#desktopNav a').forEach(a=>a.classList.toggle('active',a.hash==='#'+chosen));ticking=false;}window.addEventListener('scroll',()=>{if(!ticking){requestAnimationFrame(updateScroll);ticking=true}},{passive:true});updateScroll();
+</script>
+</body>
+</html>
